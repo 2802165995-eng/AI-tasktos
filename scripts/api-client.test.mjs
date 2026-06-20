@@ -75,3 +75,33 @@ await assert.rejects(
     }),
   /请在 \.env\.local 中配置 OPENAI_API_KEY/
 );
+
+const cancellationController = new AbortController();
+let receivedSignal;
+const cancelledRequest = analyzeReferenceViaApi(reference, {
+  signal: cancellationController.signal,
+  timeoutMs: 1000,
+  fetchImpl: async (_url, options) => {
+    receivedSignal = options.signal;
+    return new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(options.signal.reason), { once: true });
+    });
+  }
+});
+
+cancellationController.abort(new DOMException("用户取消分析", "AbortError"));
+
+await assert.rejects(cancelledRequest, (error) => error.name === "AbortError");
+assert.ok(receivedSignal.aborted);
+
+await assert.rejects(
+  () =>
+    analyzeReferenceViaApi(reference, {
+      timeoutMs: 5,
+      fetchImpl: async (_url, options) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener("abort", () => reject(options.signal.reason), { once: true });
+        })
+    }),
+  /模型分析超时，请重试/
+);

@@ -2144,6 +2144,21 @@ button:active:not(:disabled) {
   font-weight: 700;
 }
 
+.analysis-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.analysis-actions .primary-button,
+.analysis-actions .secondary-button {
+  width: 100%;
+  min-height: 44px;
+}
+
+.cancel-analysis-button {
+  color: var(--text1);
+}
+
 .primary-button,
 .secondary-button,
 .pill-button {

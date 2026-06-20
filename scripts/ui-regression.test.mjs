@@ -9,6 +9,10 @@ for (const hook of [
   "data-image-url-input",
   "data-image-file-input",
   "data-analysis-mode",
+  "data-cancel-analysis",
+  "handleCancelAnalysis",
+  "currentAnalysisTask",
+  "recoverAnalysisState",
   "analysis-hero",
   "analysis-details",
 ]) {
@@ -89,5 +93,6 @@ assert.match(
   /\.analysis-details\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1;/,
   "analysis details should span the full card width below the hero",
 );
+assert.match(cssSource, /\.analysis-actions\s*\{/, "missing analysis action layout");
 
 console.log("ui regression checks passed");
