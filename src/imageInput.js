@@ -19,3 +19,19 @@ export function validateImageFile(file) {
   }
   return null;
 }
+
+export async function readImageFileAsDataUrl(file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length === 0) {
+    throw new Error("图片内容为空。");
+  }
+
+  let binary = "";
+  const chunkSize = 32 * 1024;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+
+  return `data:${file.type};base64,${btoa(binary)}`;
+}

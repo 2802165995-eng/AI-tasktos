@@ -12,7 +12,7 @@ import {
   isCurrentAnalysisTask,
   recoverAnalysisState
 } from "./analysisTask.js";
-import { findClipboardImageFile, validateImageFile } from "./imageInput.js";
+import { findClipboardImageFile, readImageFileAsDataUrl, validateImageFile } from "./imageInput.js";
 
 const STORAGE_KEY = "tasteos:mvp-state-v4";
 
@@ -757,7 +757,7 @@ function bindEvents() {
       updateUploadPreview("", "");
       return;
     }
-    readFileAsDataUrl(file)
+    readImageFileAsDataUrl(file)
       .then((imageUrl) => {
         pendingPastedImage = null;
         updateUploadPreview(imageUrl, `${file.name} 已就绪，点击开始分析。`);
@@ -935,7 +935,7 @@ async function handleCreateReference(event) {
       alert(validationError);
       return;
     }
-    readFileAsDataUrl(file).then(finish).catch(() => alert("图片读取失败，请换一张图片或使用图片链接。"));
+    readImageFileAsDataUrl(file).then(finish).catch((error) => alert(`图片读取失败：${error.message}`));
     return;
   }
   if (pendingPastedImage) {
@@ -956,14 +956,14 @@ function handleImagePaste(event) {
     updateUploadPreview("", validationError);
     return;
   }
-  readFileAsDataUrl(file)
+  readImageFileAsDataUrl(file)
     .then((dataUrl) => {
       pendingPastedImage = { dataUrl, name: file.name || "剪贴板图片" };
       updateUploadPreview(dataUrl, "剪贴板图片已就绪，点击开始分析。");
     })
     .catch(() => {
       pendingPastedImage = null;
-      updateUploadPreview("", "剪贴板图片读取失败，请重新复制后再粘贴。");
+      updateUploadPreview("", "剪贴板图片读取失败，请重新复制后再粘贴，或保存为 PNG/JPG 后上传。");
     });
 }
 
