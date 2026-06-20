@@ -50,6 +50,7 @@ DASHSCOPE_MODEL=qwen3-vl-flash
 DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 HOST=0.0.0.0
 PORT=9000
+ALLOWED_ORIGIN=https://2802165995-eng.github.io
 ```
 
 不要把真实 `DASHSCOPE_API_KEY` 写入代码、ZIP、GitHub 或聊天截图中。
