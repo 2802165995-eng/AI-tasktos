@@ -1209,6 +1209,41 @@ h1 {
   background: #fff;
 }
 
+.reference-context-menu {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  min-width: 180px;
+  overflow: hidden;
+  border: 1px solid var(--border-visible);
+  border-radius: var(--radius-control);
+  background: var(--surface1);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18);
+}
+
+.reference-context-menu span {
+  padding: 9px 12px 7px;
+  overflow: hidden;
+  color: var(--text2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-context-menu button {
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: #b42318;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.reference-context-menu button:hover,
+.reference-context-menu button:focus-visible {
+  background: #fff1f0;
+}
+
 .reference-browser .reference-row,
 .reference-browser .reference-list.compact .reference-row {
   display: grid;

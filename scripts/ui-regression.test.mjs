@@ -15,6 +15,11 @@ for (const hook of [
   "handleImagePaste",
   "pendingPastedImage",
   "findClipboardImageFile",
+  "data-reference-context-menu",
+  "data-context-delete-reference",
+  "handleReferenceContextMenu",
+  "closeReferenceContextMenu",
+  "contextmenu",
   "recoverAnalysisState",
   "analysis-hero",
   "analysis-details",
@@ -97,5 +102,6 @@ assert.match(
   "analysis details should span the full card width below the hero",
 );
 assert.match(cssSource, /\.analysis-actions\s*\{/, "missing analysis action layout");
+assert.match(cssSource, /\.reference-context-menu\s*\{/, "missing reference context menu styles");
 
 console.log("ui regression checks passed");

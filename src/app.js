@@ -86,6 +86,7 @@ const seedState = {
 
 let currentAnalysisTask = null;
 let pendingPastedImage = null;
+let referenceContextMenu = null;
 let state = loadState();
 
 function loadState() {
@@ -271,6 +272,24 @@ function renderLibrary() {
         </div>
         ${renderReferenceForm()}
       </aside>
+      ${renderReferenceContextMenu()}
+    </div>
+  `;
+}
+
+function renderReferenceContextMenu() {
+  if (!referenceContextMenu) return "";
+  const reference = state.references.find((item) => item.id === referenceContextMenu.referenceId);
+  if (!reference) return "";
+  return `
+    <div
+      class="reference-context-menu"
+      role="menu"
+      data-reference-context-menu
+      style="left:${referenceContextMenu.x}px;top:${referenceContextMenu.y}px"
+    >
+      <span>${escapeHtml(reference.title)}</span>
+      <button type="button" role="menuitem" data-context-delete-reference="${reference.id}">删除案例</button>
     </div>
   `;
 }
@@ -726,18 +745,23 @@ function bindEvents() {
   });
   document.querySelectorAll("[data-reference-id]").forEach((button) => {
     button.addEventListener("click", () => setState({ ...state, selectedReferenceId: button.dataset.referenceId }));
+    button.addEventListener("contextmenu", handleReferenceContextMenu);
   });
   document.querySelectorAll("[data-delete-reference]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      const nextState = deleteReferenceFromState(state, button.dataset.deleteReference);
-      setState({
-        ...nextState,
-        profile: generateTasteProfile(nextState.references, nextState.analyses, nextState.feedback || []),
-        analysisNotice: "案例已删除。"
-      });
+      deleteReferenceWithConfirmation(button.dataset.deleteReference);
     });
   });
+  document.querySelector("[data-context-delete-reference]")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    deleteReferenceWithConfirmation(event.currentTarget.dataset.contextDeleteReference);
+  });
+  document.addEventListener("click", closeReferenceContextMenu, { once: true });
+  document.onkeydown = (event) => {
+    if (event.key === "Escape") closeReferenceContextMenu();
+  };
+  window.onscroll = closeReferenceContextMenu;
   document.querySelector("[data-reference-form]")?.addEventListener("submit", handleCreateReference);
   document.querySelector("[data-cancel-analysis]")?.addEventListener("click", handleCancelAnalysis);
   document.querySelector("[data-analysis-mode]")?.addEventListener("change", (event) => {
@@ -832,6 +856,38 @@ function bindEvents() {
       const feedback = state.feedback.filter((item) => item.promptTemplateId !== promptId);
       setState({ ...state, prompts, draftPrompt, feedback, feedbackSaved: false });
     });
+  });
+}
+
+function handleReferenceContextMenu(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  referenceContextMenu = {
+    referenceId: event.currentTarget.dataset.referenceId,
+    x: Math.min(event.clientX, window.innerWidth - 190),
+    y: Math.min(event.clientY, window.innerHeight - 110)
+  };
+  render();
+}
+
+function closeReferenceContextMenu() {
+  if (!referenceContextMenu) return;
+  referenceContextMenu = null;
+  render();
+}
+
+function deleteReferenceWithConfirmation(referenceId) {
+  const reference = state.references.find((item) => item.id === referenceId);
+  referenceContextMenu = null;
+  if (!reference || !window.confirm(`确认删除“${reference.title}”吗？`)) {
+    render();
+    return;
+  }
+  const nextState = deleteReferenceFromState(state, referenceId);
+  setState({
+    ...nextState,
+    profile: generateTasteProfile(nextState.references, nextState.analyses, nextState.feedback || []),
+    analysisNotice: "案例已删除。"
   });
 }
 
