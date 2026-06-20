@@ -12,6 +12,7 @@ import {
   isCurrentAnalysisTask,
   recoverAnalysisState
 } from "./analysisTask.js";
+import { findClipboardImageFile, validateImageFile } from "./imageInput.js";
 
 const STORAGE_KEY = "tasteos:mvp-state-v4";
 
@@ -84,6 +85,7 @@ const seedState = {
 };
 
 let currentAnalysisTask = null;
+let pendingPastedImage = null;
 let state = loadState();
 
 function loadState() {
@@ -296,6 +298,7 @@ function renderReferenceForm() {
           <span>选择本地图片或粘贴图片链接后，这里会先显示预览。</span>
         </div>
       </div>
+      <p class="field-hint">也可以直接按 Ctrl+V / ⌘V 粘贴剪贴板中的图片，支持 JPEG、PNG、WebP，最大 3 MB。</p>
       <div class="field">
         <label for="analysisMode">分析模式</label>
         <select id="analysisMode" name="analysisMode" data-analysis-mode ${isAnalyzing ? "disabled" : ""}>
@@ -755,13 +758,18 @@ function bindEvents() {
       return;
     }
     readFileAsDataUrl(file)
-      .then((imageUrl) => updateUploadPreview(imageUrl, `${file.name} 已就绪，点击开始分析。`))
+      .then((imageUrl) => {
+        pendingPastedImage = null;
+        updateUploadPreview(imageUrl, `${file.name} 已就绪，点击开始分析。`);
+      })
       .catch(() => updateUploadPreview("", "图片读取失败，请换一张图片或使用图片链接。"));
   });
+  document.onpaste = handleImagePaste;
   document.querySelector("[data-prompt-form]")?.addEventListener("submit", handleCreatePrompt);
   document.querySelector("[data-feedback-form]")?.addEventListener("submit", handleCreateFeedback);
   document.querySelector("[data-reset]")?.addEventListener("click", () => {
     localStorage.removeItem(STORAGE_KEY);
+    pendingPastedImage = null;
     state = normalizeState(structuredClone(seedState));
     render();
   });
@@ -866,7 +874,7 @@ async function handleCreateReference(event) {
       title: String(data.get("title") || "").trim() || `参考图 ${new Date().toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}`,
       imageUrl,
       category: "event_poster",
-      source: file instanceof File && file.size > 0 ? "本地上传" : "用户输入",
+      source: pendingPastedImage ? "剪贴板粘贴" : file instanceof File && file.size > 0 ? "本地上传" : "用户输入",
       userNote: "",
       createdAt: new Date().toISOString()
     };
@@ -911,6 +919,7 @@ async function handleCreateReference(event) {
         analysisNotice,
         isAnalyzing: false
       });
+      pendingPastedImage = null;
     } finally {
       if (currentAnalysisTask?.id === task.id) {
         currentAnalysisTask = null;
@@ -921,10 +930,41 @@ async function handleCreateReference(event) {
     }
   };
   if (file instanceof File && file.size > 0) {
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
     readFileAsDataUrl(file).then(finish).catch(() => alert("图片读取失败，请换一张图片或使用图片链接。"));
     return;
   }
+  if (pendingPastedImage) {
+    await finish(pendingPastedImage.dataUrl);
+    return;
+  }
   await finish(urlInput);
+}
+
+function handleImagePaste(event) {
+  if (state.isAnalyzing) return;
+  const file = findClipboardImageFile(event.clipboardData);
+  if (!file) return;
+  event.preventDefault();
+  const validationError = validateImageFile(file);
+  if (validationError) {
+    pendingPastedImage = null;
+    updateUploadPreview("", validationError);
+    return;
+  }
+  readFileAsDataUrl(file)
+    .then((dataUrl) => {
+      pendingPastedImage = { dataUrl, name: file.name || "剪贴板图片" };
+      updateUploadPreview(dataUrl, "剪贴板图片已就绪，点击开始分析。");
+    })
+    .catch(() => {
+      pendingPastedImage = null;
+      updateUploadPreview("", "剪贴板图片读取失败，请重新复制后再粘贴。");
+    });
 }
 
 function handleCancelAnalysis() {

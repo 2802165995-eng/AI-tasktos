@@ -25,6 +25,27 @@ function createTasteOsServer(options = {}) {
 
   return http.createServer((request, response) => {
     const requestUrl = new URL(request.url || "/", "http://localhost");
+    const requestOrigin = request.headers.origin;
+    const allowedOrigin = env.ALLOWED_ORIGIN;
+
+    if (requestUrl.pathname === "/api/analyze-reference" && requestOrigin && allowedOrigin && requestOrigin !== allowedOrigin) {
+      response.writeHead(403, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "Origin is not allowed" }));
+      return;
+    }
+
+    if (requestUrl.pathname === "/api/analyze-reference" && requestOrigin && requestOrigin === allowedOrigin) {
+      response.setHeader("access-control-allow-origin", allowedOrigin);
+      response.setHeader("access-control-allow-methods", "POST, OPTIONS");
+      response.setHeader("access-control-allow-headers", "Content-Type");
+      response.setHeader("vary", "Origin");
+    }
+
+    if (request.method === "OPTIONS" && requestUrl.pathname === "/api/analyze-reference") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
 
     if (request.method === "GET" && requestUrl.pathname === "/health") {
       response.writeHead(200, { "content-type": "application/json; charset=utf-8" });

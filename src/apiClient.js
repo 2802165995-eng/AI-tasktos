@@ -20,6 +20,16 @@ export function buildAnalyzeReferencePayload(reference) {
 
 const DEFAULT_ANALYSIS_TIMEOUT_MS = 45_000;
 
+export function resolveAnalyzeReferenceUrl(options = {}) {
+  const documentImpl = options.documentImpl === undefined ? globalThis.document : options.documentImpl;
+  const configuredBaseUrl =
+    options.apiBaseUrl ||
+    documentImpl?.querySelector('meta[name="tasteos-api-base-url"]')?.content ||
+    "";
+  const normalizedBaseUrl = String(configuredBaseUrl).trim().replace(/\/+$/, "");
+  return normalizedBaseUrl ? `${normalizedBaseUrl}/api/analyze-reference` : "/api/analyze-reference";
+}
+
 export async function analyzeReferenceViaApi(reference, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_ANALYSIS_TIMEOUT_MS;
@@ -38,7 +48,7 @@ export async function analyzeReferenceViaApi(reference, options = {}) {
   }, timeoutMs);
 
   try {
-    const response = await fetchImpl("/api/analyze-reference", {
+    const response = await fetchImpl(resolveAnalyzeReferenceUrl(options), {
       method: "POST",
       headers: {
         "content-type": "application/json"
