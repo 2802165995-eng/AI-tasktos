@@ -6,6 +6,12 @@ import { buildLibraryViewModel } from "./libraryViewModel.js";
 import { generateAnalysis, generatePromptTemplate, generateTasteProfile } from "./tasteEngine.js";
 import { deleteReferenceFromState } from "./referenceState.js";
 import { copyTextToClipboard } from "./clipboard.js";
+import {
+  cancelAnalysisTask,
+  createAnalysisTask,
+  isCurrentAnalysisTask,
+  recoverAnalysisState
+} from "./analysisTask.js";
 
 const STORAGE_KEY = "tasteos:mvp-state-v4";
 
@@ -77,13 +83,14 @@ const seedState = {
   profileCopied: false
 };
 
+let currentAnalysisTask = null;
 let state = loadState();
 
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return normalizeState(structuredClone(seedState));
   try {
-    return normalizeState({ ...structuredClone(seedState), ...JSON.parse(raw) });
+    return normalizeState(recoverAnalysisState({ ...structuredClone(seedState), ...JSON.parse(raw) }));
   } catch {
     return normalizeState(structuredClone(seedState));
   }
@@ -296,7 +303,10 @@ function renderReferenceForm() {
           <option value="api" ${state.analysisMode === "api" ? "selected" : ""}>真实模型分析</option>
         </select>
       </div>
-      <button class="primary-button" type="submit" ${isAnalyzing ? "disabled" : ""}>${isAnalyzing ? "分析中..." : "开始分析"}</button>
+      <div class="analysis-actions">
+        <button class="primary-button" type="submit" ${isAnalyzing ? "disabled" : ""}>${isAnalyzing ? "分析中..." : "开始分析"}</button>
+        ${isAnalyzing ? '<button class="secondary-button cancel-analysis-button" type="button" data-cancel-analysis>取消分析</button>' : ""}
+      </div>
       ${state.analysisNotice ? `<p class="status-note">${escapeHtml(state.analysisNotice)}</p>` : ""}
     </form>
   `;
@@ -726,6 +736,7 @@ function bindEvents() {
     });
   });
   document.querySelector("[data-reference-form]")?.addEventListener("submit", handleCreateReference);
+  document.querySelector("[data-cancel-analysis]")?.addEventListener("click", handleCancelAnalysis);
   document.querySelector("[data-analysis-mode]")?.addEventListener("change", (event) => {
     state = normalizeState({ ...state, analysisMode: event.currentTarget.value, analysisNotice: "" });
     saveState();
@@ -861,6 +872,8 @@ async function handleCreateReference(event) {
     };
     let analysis;
     let analysisNotice = "";
+    const task = createAnalysisTask();
+    currentAnalysisTask = task;
 
     setState({
       ...state,
@@ -868,38 +881,62 @@ async function handleCreateReference(event) {
       analysisNotice: analysisMode === "api" ? "正在调用真实模型分析图片，通常需要 10-30 秒。" : "正在生成离线演示分析。"
     });
 
-    if (analysisMode === "api") {
-      try {
-        analysis = await analyzeReferenceViaApi(reference);
-        analysisNotice = "已使用真实模型完成视觉分析。";
-      } catch (error) {
+    try {
+      if (analysisMode === "api") {
+        try {
+          analysis = await analyzeReferenceViaApi(reference, { signal: task.controller.signal });
+          analysisNotice = "已使用真实模型完成视觉分析。";
+        } catch (error) {
+          if (task.cancelled || error?.name === "AbortError") return;
+          analysis = generateAnalysis(reference);
+          analysisNotice = `真实模型分析暂不可用，已回退到离线演示分析：${error.message}`;
+        }
+      } else {
         analysis = generateAnalysis(reference);
-        analysisNotice = `真实模型分析暂不可用，已回退到离线演示分析：${error.message}`;
+        analysisNotice = "已使用离线演示分析。";
       }
-    } else {
-      analysis = generateAnalysis(reference);
-      analysisNotice = "已使用离线演示分析。";
-    }
 
-    const referenceWithAnalysis = { ...reference, analysisId: analysis.id };
-    const references = [referenceWithAnalysis, ...state.references];
-    const analyses = [analysis, ...state.analyses];
-    setState({
-      ...state,
-      references,
-      analyses,
-      profile: generateTasteProfile(references, analyses, state.feedback),
-      selectedReferenceId: referenceWithAnalysis.id,
-      activeView: "library",
-      analysisNotice,
-      isAnalyzing: false
-    });
+      if (!isCurrentAnalysisTask(currentAnalysisTask, task)) return;
+
+      const referenceWithAnalysis = { ...reference, analysisId: analysis.id };
+      const references = [referenceWithAnalysis, ...state.references];
+      const analyses = [analysis, ...state.analyses];
+      setState({
+        ...state,
+        references,
+        analyses,
+        profile: generateTasteProfile(references, analyses, state.feedback),
+        selectedReferenceId: referenceWithAnalysis.id,
+        activeView: "library",
+        analysisNotice,
+        isAnalyzing: false
+      });
+    } finally {
+      if (currentAnalysisTask?.id === task.id) {
+        currentAnalysisTask = null;
+        if (state.isAnalyzing) {
+          setState({ ...state, isAnalyzing: false });
+        }
+      }
+    }
   };
   if (file instanceof File && file.size > 0) {
     readFileAsDataUrl(file).then(finish).catch(() => alert("图片读取失败，请换一张图片或使用图片链接。"));
     return;
   }
   await finish(urlInput);
+}
+
+function handleCancelAnalysis() {
+  const task = currentAnalysisTask;
+  if (!task) return;
+  cancelAnalysisTask(task);
+  currentAnalysisTask = null;
+  setState({
+    ...state,
+    isAnalyzing: false,
+    analysisNotice: "已取消本次分析。"
+  });
 }
 
 function handleCreatePrompt(event) {
