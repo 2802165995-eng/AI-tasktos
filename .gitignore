@@ -1,6 +1,7 @@
 .env.local
 .tunnel-*.log
 .superpowers/
+.worktrees/
 aipm_resume.json
 aipm_resume_final.pdf
 *.docx
