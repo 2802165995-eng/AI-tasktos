@@ -1,14 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { pathToFileURL } = require("url");
-
-const root = path.resolve(process.cwd());
-const rootWithSeparator = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
-const port = Number(process.env.PORT || 4173);
-const host = "127.0.0.1";
-
-loadLocalEnv(path.join(root, ".env.local"));
+const { fileURLToPath, pathToFileURL } = require("url");
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -17,42 +10,70 @@ const contentTypes = {
   ".md": "text/markdown; charset=utf-8"
 };
 
-const server = http.createServer((request, response) => {
-  const requestUrl = new URL(request.url || "/", `http://${host}:${port}`);
+function getServerConfig(env = process.env) {
+  return {
+    host: env.HOST || "127.0.0.1",
+    port: Number(env.PORT || 4173)
+  };
+}
 
-  if (request.method === "POST" && requestUrl.pathname === "/api/analyze-reference") {
-    handleAnalyzeReference(request, response);
-    return;
-  }
+function createTasteOsServer(options = {}) {
+  const rootInput = options.root || process.cwd();
+  const root = rootInput instanceof URL ? fileURLToPath(rootInput) : path.resolve(rootInput);
+  const rootWithSeparator = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  const env = options.env || process.env;
 
-  const relativePath = requestUrl.pathname === "/" ? "index.html" : decodeURIComponent(requestUrl.pathname.slice(1));
-  const filePath = path.resolve(root, relativePath);
+  return http.createServer((request, response) => {
+    const requestUrl = new URL(request.url || "/", "http://localhost");
 
-  if (filePath !== root && !filePath.startsWith(rootWithSeparator)) {
-    response.writeHead(403);
-    response.end("Forbidden");
-    return;
-  }
-
-  fs.readFile(filePath, (error, data) => {
-    if (error) {
-      response.writeHead(404);
-      response.end("Not found");
+    if (request.method === "GET" && requestUrl.pathname === "/health") {
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ status: "ok" }));
       return;
     }
 
-    response.writeHead(200, {
-      "content-type": contentTypes[path.extname(filePath)] || "application/octet-stream"
+    if (request.method === "POST" && requestUrl.pathname === "/api/analyze-reference") {
+      handleAnalyzeReference(request, response, env);
+      return;
+    }
+
+    const relativePath = requestUrl.pathname === "/" ? "index.html" : decodeURIComponent(requestUrl.pathname.slice(1));
+    const filePath = path.resolve(root, relativePath);
+
+    if (filePath !== root && !filePath.startsWith(rootWithSeparator)) {
+      response.writeHead(403);
+      response.end("Forbidden");
+      return;
+    }
+
+    fs.readFile(filePath, (error, data) => {
+      if (error) {
+        response.writeHead(404);
+        response.end("Not found");
+        return;
+      }
+
+      response.writeHead(200, {
+        "content-type": contentTypes[path.extname(filePath)] || "application/octet-stream"
+      });
+      response.end(data);
     });
-    response.end(data);
   });
-});
+}
 
-server.listen(port, host, () => {
-  console.log(`TasteOS preview running at http://${host}:${port}/`);
-});
+function startTasteOsServer(options = {}) {
+  const root = path.resolve(options.root || process.cwd());
+  loadLocalEnv(path.join(root, ".env.local"));
+  const env = options.env || process.env;
+  const { host, port } = getServerConfig(env);
+  const server = createTasteOsServer({ root, env });
+  server.listen(port, host, () => {
+    console.log(`TasteOS preview running at http://${host}:${port}/`);
+  });
+  return server;
+}
 
-async function handleAnalyzeReference(request, response) {
+async function handleAnalyzeReference(request, response, env = process.env) {
   response.setHeader("content-type", "application/json; charset=utf-8");
 
   try {
@@ -68,12 +89,12 @@ async function handleAnalyzeReference(request, response) {
     }
 
     const analysis = await createApiAnalysis(payload, {
-      provider: process.env.AI_PROVIDER,
-      apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL,
-      dashScopeApiKey: process.env.DASHSCOPE_API_KEY,
-      dashScopeModel: process.env.DASHSCOPE_MODEL,
-      dashScopeBaseUrl: process.env.DASHSCOPE_BASE_URL
+      provider: env.AI_PROVIDER,
+      apiKey: env.OPENAI_API_KEY,
+      model: env.OPENAI_MODEL,
+      dashScopeApiKey: env.DASHSCOPE_API_KEY,
+      dashScopeModel: env.DASHSCOPE_MODEL,
+      dashScopeBaseUrl: env.DASHSCOPE_BASE_URL
     });
 
     response.writeHead(200);
@@ -83,6 +104,16 @@ async function handleAnalyzeReference(request, response) {
     response.writeHead(message.includes("API_KEY") || message.includes("MODEL") ? 503 : 500);
     response.end(JSON.stringify({ error: message }));
   }
+}
+
+module.exports = {
+  createTasteOsServer,
+  getServerConfig,
+  startTasteOsServer
+};
+
+if (require.main === module) {
+  startTasteOsServer();
 }
 
 function loadLocalEnv(filePath) {

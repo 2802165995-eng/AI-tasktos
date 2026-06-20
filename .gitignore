@@ -2,6 +2,7 @@
 .tunnel-*.log
 .superpowers/
 .worktrees/
+dist/
 aipm_resume.json
 aipm_resume_final.pdf
 *.docx

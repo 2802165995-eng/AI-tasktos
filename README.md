@@ -47,6 +47,16 @@ node scripts\static-server.js
 http://127.0.0.1:4173/
 ```
 
+## 阿里云函数计算部署
+
+生成不含密钥和个人文件的部署包：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-aliyun-fc.ps1
+```
+
+生成的 ZIP 位于 `dist/tasteos-aliyun-fc.zip`。控制台配置步骤见 [`DEPLOY_ALIYUN_FC.md`](DEPLOY_ALIYUN_FC.md)。
+
 ## 真实模型配置
 
 不要把 `.env.local` 提交或发给别人。它只应该放在本地项目根目录。
