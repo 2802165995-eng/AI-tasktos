@@ -18,6 +18,7 @@ try {
   $required = @(
     "index.html",
     "README.md",
+    "DEPLOY_ALIYUN_FC.md",
     "scripts/static-server.js",
     "scripts/openai-analysis.mjs",
     "src/app.js",
@@ -49,6 +50,27 @@ try {
       if ($entry -match $pattern) {
         throw "Forbidden ZIP entry found: $entry"
       }
+    }
+  }
+
+  $guideEntry = $archive.GetEntry("DEPLOY_ALIYUN_FC.md")
+  $reader = [System.IO.StreamReader]::new($guideEntry.Open())
+  try {
+    $guide = $reader.ReadToEnd()
+  } finally {
+    $reader.Dispose()
+  }
+
+  foreach ($requiredText in @(
+    "node scripts/static-server.js",
+    "HOST=0.0.0.0",
+    "PORT=9000",
+    "/health",
+    "DASHSCOPE_API_KEY",
+    "DASHSCOPE_MODEL"
+  )) {
+    if (-not $guide.Contains($requiredText)) {
+      throw "Deployment guide is missing: $requiredText"
     }
   }
 } finally {
