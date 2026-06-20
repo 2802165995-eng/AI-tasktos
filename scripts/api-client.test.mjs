@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { analyzeReferenceViaApi, buildAnalyzeReferencePayload } from "../src/apiClient.js";
+import { analyzeReferenceViaApi, buildAnalyzeReferencePayload, resolveAnalyzeReferenceUrl } from "../src/apiClient.js";
 
 const reference = {
   id: "ref-test",
@@ -29,6 +29,26 @@ assert.deepEqual(imageOnlyPayload, {
   id: "ref-image-only",
   imageUrl: "https://example.com/only-image.jpg"
 });
+
+assert.equal(
+  resolveAnalyzeReferenceUrl({
+    apiBaseUrl: "https://example.fcapp.run/"
+  }),
+  "https://example.fcapp.run/api/analyze-reference"
+);
+
+assert.equal(
+  resolveAnalyzeReferenceUrl({
+    documentImpl: {
+      querySelector() {
+        return { content: "https://configured.fcapp.run" };
+      }
+    }
+  }),
+  "https://configured.fcapp.run/api/analyze-reference"
+);
+
+assert.equal(resolveAnalyzeReferenceUrl({ documentImpl: null }), "/api/analyze-reference");
 
 const calls = [];
 const analysis = await analyzeReferenceViaApi(reference, {
