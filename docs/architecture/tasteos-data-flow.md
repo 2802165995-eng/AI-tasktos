@@ -224,7 +224,7 @@ Reference -> analyzeReferenceViaApi(reference) -> /api/analyze-reference -> Visu
 
 它们的共同点是都返回 `VisualAnalysis`。这就是可替换边界。
 
-面试中可以这样讲：
+架构说明：
 
 > 我没有把 mock 写死在 UI 里，而是把它控制在视觉分析这一层。只要真实 API 也返回同样的 `VisualAnalysis`，后面的 Taste Profile、Prompt Studio 和 Feedback 都不需要改。这是我对 MVP 可演示性和后续工程扩展性的平衡。
 
@@ -270,9 +270,9 @@ flowchart LR
 6. 加用户账号和多项目工作区。
 7. 给每次分析和 prompt 生成加可观测日志。
 
-## 10. 面试讲技术架构的 60 秒版本
+## 10. 技术架构简述
 
-可以这样说：
+可以这样概括：
 
 > TasteOS 的技术结构分成 UI、领域引擎、API 代理和适配器几层。UI 负责案例库、画像、prompt 和反馈的交互；`tasteEngine.js` 负责把参考图分析聚合成 Taste Profile，并生成通用 prompt；`promptAdapters.js` 再把通用 prompt 转成 Midjourney、DALL-E 或 Stable Diffusion 更适合的格式。
 >

@@ -105,7 +105,7 @@ src/apiClient.js           前端真实分析请求封装
 scripts/static-server.js   本地静态服务和真实模型代理
 scripts/openai-analysis.mjs OpenAI / DashScope 图像分析请求
 scripts/*.test.mjs         本地测试
-docs/                      PRD、架构、演示和面试材料
+docs/                      PRD、架构和演示资料
 ```
 
 ## 本地验证
@@ -117,18 +117,6 @@ docs/                      PRD、架构、演示和面试材料
 & 'C:\Users\29986\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' scripts\openai-analysis.test.mjs
 & 'C:\Users\29986\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' scripts\text-integrity.test.mjs
 ```
-
-## 面试讲述重点
-
-可以这样概括：
-
-> TasteOS 不是生图工具，而是生图前的审美表达层。它把用户收藏的视觉参考图变成结构化审美画像，再按具体场景生成中文生图提示词，并通过结果反馈持续校准偏好。
-
-可以重点讲三点：
-
-- 产品判断：先解决“如何稳定表达审美”，而不是直接做生图。
-- 工程边界：离线分析和真实模型分析都输出同一套结构，前端流程不用重写。
-- 自用价值：用户上传自己的参考图后，可以沉淀个人长期可复用的提示词资产。
 
 ## 常见问题
 
